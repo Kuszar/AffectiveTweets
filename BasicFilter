@@ -1,0 +1,45 @@
+import java.util.StringTokenizer;
+import java.io.*;
+
+public class BasicFilter
+{
+	public static void main(String[] args)
+	{
+		int test0 = checkString("Donald Trump", "this message contains Donald Trump");
+		int test1 = checkString("Donald Trump", "this message does not contain the US President");
+		int test2 = checkString("Donald Trump", "this message contains Donald");
+		int test3 = checkString("Donald Trump", "this message contains Trump");
+		int test4 = checkString("Hillary Clinton", "Rhodham Hood: It takes a village to  community organize wealth redistribution Obama-style.   #SemST")
+		int test5 = checkString("Hillary Clinton", "#HillaryClinton wants to be elected (thinks she's entitled)to WORK 4 the PEOPLE, & yet, she wants nothing to do with them!#peons #SemST")
+		System.out.println(test0);
+		System.out.println(test1);
+		System.out.println(test2);
+		System.out.println(test3);
+	}
+	
+	//extracts and splits the target of the tweet, and compares segments of it with the content of the tweet, returning a 1 if there is a match, 0 if not.
+	//case insensitive, with whole or part of the target in tweet, with or without hashtag.
+	private static int checkString(String target, String content)
+	{
+		String[] targets = target.toLowerCase().split("\\s");
+		String[] contents = content.toLowerCase().split("\\s");
+		for (int i = 0; i<targets.length; i++)
+			for(int j = 0; j<contents.length; j++)
+				if(targets[i].equals(contents[j])) return 1;
+				return 0;
+	}
+	
+	private static int checkencodings(String content)
+	{
+		String[] emotes = {":)", ":(", ">:(", ":D", "D:", ";)", ">:D", ">:)", ">;)", ">;D", ">;(", ";(", ";D"};
+		String[] contents_emotes = content.split("abcdefghijklmnopqrstuvwxyz01234567890\\s");
+		String[] contents = content.toLowerCase().split("\\s");
+		for (int i = 0; i<emotes.length; i++)
+			for(int j = 0; j<contents_emotes.length; j++)
+				if(emotes[i].equals(contents_emotes[j])) return 1;
+				return 0;
+	}
+	
+	
+	
+}
