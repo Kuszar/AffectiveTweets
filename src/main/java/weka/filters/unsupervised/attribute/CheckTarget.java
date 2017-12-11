@@ -28,7 +28,8 @@ public class CheckTarget extends TweetToFeatureVector {
      */
     private static final long serialVersionUID = -5142109172034736327L;
    
-    private int numbers=1;
+	protected SingleIndex m_subjIndex = new SingleIndex("0");
+	protected SingleIndex m_contIndex = new SingleIndex("1");
 
 
 
@@ -98,7 +99,27 @@ public Capabilities getCapabilities() {
     return result;
 }
 
-
+	@OptionMetadata(displayName = "subjIndex",
+			description = "The index (starting from 0) of the target string attribute. First and last are valid values. ",
+			commandLineParamName = "subind", commandLineParamSynopsis = "-subind <col>",
+			displayOrder = 0)
+	public String getTweetIndex() {
+		return m_tweetIndex.getSingleIndex();
+	}
+	public void setTweetIndex(String textIndex) {
+		this.m_tweetIndex.setSingleIndex(textIndex);
+	}
+	
+		@OptionMetadata(displayName = "tweetIndex",
+			description = "The index (starting from 0) of the tweet string attribute. First and last are valid values. ",
+			commandLineParamName = "tweetind", commandLineParamSynopsis = "-tweetind <col>",
+			displayOrder = 0)
+	public String getSubjIndex() {
+		return m_subjIndex.getSingleIndex();
+	}
+	public void setSubjIndex(String textIndex) {
+		this.m_subjIndex.setSingleIndex(textIndex);
+	}
 
 
 
@@ -125,15 +146,16 @@ public boolean allowAccessToFullInputFormat() {
 	protected Instances process(Instances instances) throws Exception 
 	{		
 		// set upper value for text index
-		m_textIndex.setUpper(instances.numAttributes() - 1);
+		m_subjIndex.setUpper(instances.numAttributes() - 1);
+		m_contIndex.setUpper(instances.numAttributes() - 1);
 		Instances result = getOutputFormat();
 
 
 		// reference to the content of the message, users index start from zero:
 		//Index for the subject string (post-ID removal)
-		Attribute attrCont = instances.attribute(0);
+		Attribute attrCont = instances.attribute(this.m_subjIndex.getIndex());
 		//Index for the content string (post-ID removal)
-		Attribute attrCont_ = instances.attribute(1);
+		Attribute attrCont_ = instances.attribute(this.m_contIndex.getIndex());
 		for (int i = 0; i < instances.numInstances(); i++) 
 		{
 			double[] values = new double[result.numAttributes()];
@@ -141,37 +163,27 @@ public boolean allowAccessToFullInputFormat() {
 				values[n] = instances.instance(i).value(n);
 			//pull the subject and tweet content strings from the dataset.
 			String subjtitle = instances.instance(i).stringValue(attrCont);
-			//split topic by spaces first (if there are any).
-			String[] subjfixed = subjtitle.split("\\s");
-			subjtitle = "";
-			//omit common words from the subject first, irrelevant to the topic. (ie "of", "the", "that" etc). (later will make an option for the user to be able to add words to filter from the topic)
-			for(int g = 0; g<subjfixed.length; g++)
-				if (!subjfixed[g].equals("the")&&!subjfixed[g].equals("that")&&!subjfixed[g].equals("of")&&!subjfixed[g].equals("is")&&!subjfixed[g].equals("a")&&!subjfixed[g].equals("Real")&&!subjfixed[g].equals("Concern")
-				&&!subjfixed[g].equals("Movement")&&!subjfixed[g].equals("Change"))
-					subjtitle += subjfixed[g] + " ";		
-			String content = instances.instance(i).stringValue(attrCont_);
-			//split the string manually first, to check for any hashtags or tweet references, with several words in them.
-			String[] contentfixed = content.split("(#)(\\s)(@)");
+			String content = instances.instance(i).stringValue(attrCont_);		
+			List<String> subj_ = affective.core.Utils.tokenize(subjtitle, this.toLowerCase, this.standarizeUrlsUsers, this.reduceRepeatedLetters, this.m_tokenizer,this.m_stemmer,this.m_stopwordsHandler);
+			List<String> content_ = affective.core.Utils.tokenize(content, false, this.standarizeUrlsUsers, this.reduceRepeatedLetters, this.m_tokenizer,this.m_stemmer,this.m_stopwordsHandler);
 			content = "";
 			//split again on any double words that came from hashtags or tweet references, and recreate the content string.
-			for (int p = 0; p<contentfixed.length; p++)
+			for (int p = 0; p<content_.size(); p++)
 			{
-				String[] contentfixed_ = contentfixed[p].split("(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])");
+				String[] contentfixed_ = content_.get(p).split("(#) (\\s) (@) (?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])");
 				for (int f = 0; f<contentfixed_.length; f++)
 				{
-					content += contentfixed_[f] + " ";	
+					content += contentfixed_[f].toLowerCase() + " ";	
 				}
 			}
-			//Split the subject and content strings using weka
-			List<String> subj_ = affective.core.Utils.tokenize(subjtitle, this.toLowerCase, this.standarizeUrlsUsers, this.reduceRepeatedLetters, this.m_tokenizer,this.m_stemmer,this.m_stopwordsHandler);
-			List<String> content_ = affective.core.Utils.tokenize(content, this.toLowerCase, this.standarizeUrlsUsers, this.reduceRepeatedLetters, this.m_tokenizer,this.m_stemmer,this.m_stopwordsHandler);
+			List<String> content_fixed = content.split("\\s");
 			//While still checking whether the subject is contained in the tweet
 			for (int k =0; k<subj_.size(); k++)
 			{
-				for(int j = 0; j<content_.size(); j++)
+				for(int j = 0; j<content_fixed.size(); j++)
 				{
 					//if the subject is contained partially in the tweet, return 1 and break out of the loop
-					if (subj_.get(k).equals(content_.get(j)))
+					if (subj_.get(k).equals(content_fixed.get(j)))
 					{	values[values.length-1] = 1; break; }
 				}
 				if (values[values.length-1] == 1) break;
